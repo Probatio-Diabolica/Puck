@@ -3,7 +3,7 @@ package com.puck.ELF;
 //// class for tokens
 public class Token {
     final   TokenType type;
-    final   String lexem;
+    public final   String lexem;
     final   Object literal ;
     final   int line;
 
