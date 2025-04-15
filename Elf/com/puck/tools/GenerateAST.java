@@ -20,7 +20,14 @@ public class GenerateAST {
             "Literal    :  Object value",
             "Unary      :  Token operator, Expr right"
         ));
+
+        defineAST(outputDir, "Statements", Arrays.asList(
+            "Expression : Expr expression",
+            "Print      : Expr expression"
+        ));
     }
+
+
     private static void defineAST(String outputDir, String baseName, List<String> types) throws IOException{
         String path = outputDir+"/"+baseName+".java";
         PrintWriter writer = new PrintWriter(path, "UTF-8");

@@ -4,69 +4,73 @@ import java.util.List;
 
 import com.puck.ELF.Token;
 
-abstract class Expr{
-   interface Visitor<R> {
-      R visitBexpr(B expr);
-      R visitGexpr(G expr);
-      R visitLexpr(L expr);
-      R visitUexpr(U expr);
+public abstract class Expr{
+   public interface Visitor<R> {
+      // R visitBexpr(B expr);
+      // R visitGexpr(G expr);
+      // R visitLexpr(L expr);
+      // R visitUexpr(U expr);
+      R visitBexpr(Binary expr);
+      R visitGexpr(Grouping expr);
+      R visitLexpr(Literal expr);
+      R visitUexpr(Unary expr);
    };
- static class Binary extends Expr {
-    Binary(Expr left, Token operator, Expr right) {
-    this.left = left;
-    this.operator = operator;
-    this.right = right;
+   public static class Binary extends Expr {
+      public Binary(Expr left, Token operator, Expr right) {
+      this.left = left;
+      this.operator = operator;
+      this.right = right;
+      }
 
-    }
-
-    final Expr left;
-    final Token operator;
-    final Expr right;
-    }
+      public final Expr left;
+      public final Token operator;
+      public final Expr right;
+   }
 
    @Override
-   <R> R accept(Visitor<R> visitor) {
-      return visitor.visit BinaryExpr(this);
+   public <R> R accept(Visitor<R> visitor) {
+      return visitor.visitBexpr((Binary)this);
    }
-   static class Grouping extends Expr {
-      Grouping(Expr expression) {
+   public static class Grouping extends Expr {
+      public Grouping(Expr expression) {
       this.expression = expression;
 
       }
 
-      final Expr expression;
-      }
+      public final Expr expression;
+   }
 
    @Override
    <R> R accept(Visitor<R> visitor) {
-      return visitor.visit GroupingExpr(this);
+      return visitor.visitGexpr((Grouping)this);
    }
-   static class Literal extends Expr {
-      Literal(Object value) {
+   public static class Literal extends Expr {
+      public Literal(Object value) {
       this.value = value;
 
       }
 
-      final Object value;
+      public final Object value;
    }
 
    @Override
    <R> R accept(Visitor<R> visitor) {
-      return visitor.visit LiteralExpr(this);
+      return visitor.visitLexpr((Literal)this);
     }
-   static class Unary extends Expr {
+   public static class Unary extends Expr {
       Unary(Token operator, Expr right) {
          this.operator = operator;
          this.right = right;
       }
 
-      final Token operator;
-      final Expr right;
+      public final Token operator;
+      public final Expr right;
    }
 
    @Override
    <R> R accept(Visitor<R> visitor) {
-      return visitor.visit UnaryExpr(this);
+      return visitor.visitUexpr((Unary)this);
+      // return visitor.visitUnaryExpr(this);
    }
 
    abstract<R> R accept(Visitor<R> visitor);

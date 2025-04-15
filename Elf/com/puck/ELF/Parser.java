@@ -1,9 +1,17 @@
 package com.puck.ELF;
 
+import java.util.ArrayList;
 import java.util.List;
 import static com.puck.ELF.TokenType.*;
-
+import com.puck.ELF.Expr.*;
+import com.puck.ELF.Expr.Statement;
+// This parser really has two jobs:
+// 1. Given a valid sequence of tokens, produce a corresponding syntax tree.
+// 2. Given an invalid sequence of tokens, detect any errors and tell the user about their mistakes.
 public class Parser {
+
+    private static class ParseError extends RuntimeException{}; //return the parseError
+
     private final List<Token> tokens;
     private int current = 0;
     
@@ -16,13 +24,18 @@ public class Parser {
         return equality();
     }
 
+    private Statement statement(){
+        if(match(PRINT)) return printStatement();
+        return expressionStatement();
+    }
+
     // equality -> comparison ( ( "!=" | "==" ) comparison )* ;
     private Expr equality()
     {
         Expr expr = comparasion();
         while (match(BANG_EQUAL,EQUAL_EQUAL)) {
-            token operator = previous();
-            Exps right = comparasion();
+            Token operator = previous();
+            Expr right = comparasion();
             expr = new Expr.Binary(expr,operator,right);
         }
         return expr;
@@ -58,11 +71,20 @@ public class Parser {
 
 
     private Expr comparasion() {
-        Expr expr;
+        Expr expr = term();
+
+        while(match(GREATER,GREATER_EQUAL,LESS,LESS_EQUAL))
+        {
+            Token operToken = previous();
+            Expr right = term();
+            expr = new Expr.Binary(expr,operToken,right); 
+        }
         return expr;
     }
 
-    //helper functions
+    ////helper functions/////////////////////////////////
+
+
     private Token peek() {
         return tokens.get(current);
     }
@@ -71,7 +93,122 @@ public class Parser {
         return peek().type==EOF;
     }
 
+    //previous token
     private Token previous() {
         return tokens.get(current-1);
     }
+
+    // order of precedence for addition and subtractions
+    private Expr term(){
+        Expr expr = factor();
+
+        while(match(MINUS,PLUS)){
+            Token opToken = previous();
+            Expr right = factor();
+            expr = new Expr.Binary(expr,opToken,right);
+        }
+        return expr;
+    }
+
+    //order of precedence for multiplication and division
+    private Expr factor(){
+        Expr expr = unary();
+
+        while(match(SLASH,STAR)){
+            Token opToken = previous();
+            Expr right = unary();
+            expr = new Expr.Binary(expr,opToken,right);
+        }
+        return expr;
+    }
+
+    private Expr unary(){
+        //*  BANG = '!' || MINUS = '-' 
+        if(match(BANG,MINUS)){
+            Token opToken = previous();
+            Expr left = unary();
+            Expr right = unary();
+            return new Expr.Binary(left,opToken,right); 
+        }
+
+        return primary();
+    }
+
+    private Expr primary(){
+        if(match(FALSE)) return new Expr.Literal(false);
+        if(match(TRUE))  return new Expr.Literal(true);
+        if(match(NIL))   return new Expr.Literal(null);
+
+        if(match(NUMBER,STRING)){
+            return new Expr.Literal(previous().literal);
+        }
+
+        if(match(LEFT_PAREN)){
+            Expr expr = expression();
+            consume(RIGHT_PAREN,"Expect ')' after expression.");
+            return new Expr.Grouping(expr);
+        }
+        throw error(peek(),"Expect expression.");
+    }
+
+    //!! Error Handlers
+    private Token consume(TokenType type, String message){
+        if(check(type)) return advance();
+        throw error(peek(),message);
+    }
+
+    private ParseError error(Token token, String message){
+        ELF.error(token, message);
+        return new ParseError();
+    }
+    
+    // It discards tokens until it thinks it found a statement boundary.
+    private void synchronize(){
+        advance();
+        while(!isAtEnd()){
+            if(previous().type== SEMICOLON) return;
+            switch(peek().type){
+                case CLASS:
+                case FUN:
+                case VAR: 
+                case FOR:
+                case IF:
+                case WHILE:
+                case PRINT:
+                case RETURN:
+                    return;
+                default:
+            }
+            advance();
+        }
+    }
+
+    Expr parse(){
+        try{
+            return expression();
+        }catch(ParseError error){
+            return null;
+        }
+    }
+
+    List<Statement> parse(){
+        List<Statement> statements = new ArrayList<>();
+        while(!isAtEnd()){
+            statements.add(statement());
+        }
+        return statements;
+    }
+
+    private Statement printStatement(){
+        Expr value = expression();
+        consume(SEMICOLON,"Expect ; after value.");
+        return new Statement.Print(value);
+    }
+
+    private Statement expressionStatement(){
+        Expr expr = expression();
+        consume(SEMICOLON,"Expect ':' after expression");
+        return new Statement.Expression(expr);
+    }
+
 }
