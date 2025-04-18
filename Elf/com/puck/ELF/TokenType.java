@@ -11,8 +11,8 @@ public enum TokenType {
 
 
     
-    // One or two character tokens.
-    BANG, BANG_EQUAL,
+    // One or two character tokens. 
+    BANG, BANG_EQUAL /* equivalent ot  !=  */,
     EQUAL, EQUAL_EQUAL,
     GREATER, GREATER_EQUAL,
     LESS, LESS_EQUAL,
@@ -21,8 +21,18 @@ public enum TokenType {
     IDENTIFIER, STRING, NUMBER,
     
     // Keywords.
-    AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
-    PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
-    
+    AND, OR, 
+    WHILE, FOR, 
+    CLASS, SUPER, THIS, 
+    VAR, FUN, 
+    IF, ELSE,  
+    RETURN,
+
+    // reverved Vals
+    TRUE, FALSE , NIL,
+    //statements
+    PRINT,  
+ 
+    //END of FILE
     EOF
 }

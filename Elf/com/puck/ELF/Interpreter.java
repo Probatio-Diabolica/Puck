@@ -1,15 +1,26 @@
 package com.puck.ELF;
 
 
+import com.puck.ELF.Expr.Statement;
+import com.puck.ELF.Expr.Statement.Block;
+import com.puck.ELF.Expr.Statement.Expression;
+import com.puck.ELF.Expr.Statement.Loop;
+import com.puck.ELF.Expr.Statement.Print;
+
+import java.util.List;
+
 import com.puck.ELF.Expr.Expr;
+import com.puck.ELF.Expr.Expr.Assign;
 import com.puck.ELF.Expr.Expr.Binary;
 import com.puck.ELF.Expr.Expr.Grouping;
 import com.puck.ELF.Expr.Expr.Literal;
+import com.puck.ELF.Expr.Expr.Logical;
 import com.puck.ELF.Expr.Expr.Unary;
+import com.puck.ELF.Expr.Expr.Variable;
 
-public class Interpreter implements Expr.Visitor<Object>{
+public class Interpreter implements Expr.Visitor<Object>,Statement.Visitor<Object>{
+    private PuckEnv env = new PuckEnv();
 
-    // private static final String BANG = null;
 
     public void interpret(Expr expression){
         try{
@@ -21,7 +32,43 @@ public class Interpreter implements Expr.Visitor<Object>{
         }
     }
     
+    public void interpret(List<Statement> statements, boolean print)
+    {
+        try 
+        {
+            for (Statement statement : statements) {
+                execute(statement);
+            }
+        } catch (RuntimeError error) {
+            ELF.runtimeError(error);
+        }
+    }
+
+    public void executeBlock(List<Statement> statements, PuckEnv environment){
+        PuckEnv previous = this.env;
+        try {
+            this.env = environment;
+
+            for (Statement statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            this.env = previous;
+        }
+    }
     
+    @Override
+    public Object visitAssignExpr(Assign expr) {
+        return null;
+    }
+
+    @Override
+    public Object visitBlockStmt(Block statement) {
+        executeBlock(statement.statements, new PuckEnv(env));
+        return null;
+    }
+
+
     @Override
     public Object visitBexpr(Binary expr) { //binary expressions eg a + b , where a & b are vars
         Object left = evaluate(expr.left);
@@ -73,21 +120,33 @@ public class Interpreter implements Expr.Visitor<Object>{
         return null;
     }
 
-    private boolean isEqual(Object left, Object right) {
-        if(left==null && right == null) return true;
-        if(left==null) return false;
-        return left.equals(right);
+    @Override
+    public Object visitExpressionStatement(Expression statement) {
+        evaluate(statement.expression);
+        return null;
+    }
+
+
+    @Override
+    public Object visitPrintStatement(Print statement) {
+        Object value = evaluate(statement.expression);
+        System.out.println(ConvertToString(value));
+        return null;        
     }
 
     @Override
     public Object visitGexpr(Grouping expr) {
-        Object ob = 90;
-        return ob;
+        return evaluate(expr.expression);
     }
 
     @Override
     public Object visitLexpr(Literal expr) {
         return expr.value;
+    }
+
+    @Override
+    public Object visitLogicalExpr(Logical expr) {
+        return null;
     }
 
     @Override
@@ -98,7 +157,6 @@ public class Interpreter implements Expr.Visitor<Object>{
                 return !isTruthy(right); //This is peak naming, Don't laugh
             case MINUS:
                 return -(double)right;
-                
         }        
         return null;
     }
@@ -128,6 +186,51 @@ public class Interpreter implements Expr.Visitor<Object>{
             return text;
         }
         return object.toString();
+    }
+
+    private boolean isEqual(Object left, Object right) {
+        if(left==null && right == null) return true;
+        if(left==null) return false;
+        return left.equals(right);
+    }
+
+    private void execute(Statement stmt){
+        stmt.accept(this);
+    }
+
+    @Override
+    public Object visitVariableExpr(Variable expr) {
+        return env.get(expr.name);
+    }
+
+
+    @Override
+    public Object visitIfStmt(Statement.Conditionals conditionalStatement) {
+        if (isTruthy(evaluate(conditionalStatement.condition))) {
+            execute(conditionalStatement.thenBranch);
+        } else if (conditionalStatement.elseBranch != null) {
+            execute(conditionalStatement.elseBranch);
+        }
+        return null;
+    }
+
+    @Override
+    public Object visitVarStmt(Statement.Var stmt) {
+        Object value = null;
+        if (stmt.initializer != null) {
+            value = evaluate(stmt.initializer);
+        }
+
+        env.define(stmt.name.lexem, value);
+        return null;
+    }
+
+    @Override
+    public Object visitWhileStmt(Loop stmt) {
+        while (isTruthy(evaluate(stmt.condition))) {
+            execute(stmt.body);
+        }
+        return null;
     }
 
 }

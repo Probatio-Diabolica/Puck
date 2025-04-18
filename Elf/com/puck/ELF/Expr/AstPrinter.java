@@ -1,5 +1,9 @@
 package com.puck.ELF.Expr;
 
+import com.puck.ELF.Expr.Expr.Assign;
+import com.puck.ELF.Expr.Expr.Logical;
+import com.puck.ELF.Expr.Expr.Variable;
+
 public class AstPrinter  implements Expr.Visitor<String>{
     public String print(Expr expr){
         return expr.accept(this);
@@ -40,6 +44,21 @@ public class AstPrinter  implements Expr.Visitor<String>{
         builder.append(")");
 
         return builder.toString();
+    }
+
+    @Override
+    public String visitAssignExpr(Assign expr) {
+        return "";
+    }
+
+    @Override
+    public String visitLogicalExpr(Logical expr) {
+        return "";
+    }
+
+    @Override
+    public String visitVariableExpr(Variable expr) {
+        return "";
     }
 
 }

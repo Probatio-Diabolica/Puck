@@ -18,4 +18,3 @@ public class Token {
         return type+" " +lexem+" "+literal;
     }
 }
-

@@ -1,10 +1,8 @@
 package com.puck.ELF;
 
-import java.util.ArrayList;
 import java.util.List;
 import static com.puck.ELF.TokenType.*;
 import com.puck.ELF.Expr.*;
-import com.puck.ELF.Expr.Statement;
 // This parser really has two jobs:
 // 1. Given a valid sequence of tokens, produce a corresponding syntax tree.
 // 2. Given an invalid sequence of tokens, detect any errors and tell the user about their mistakes.
@@ -15,9 +13,20 @@ public class Parser {
     private final List<Token> tokens;
     private int current = 0;
     
+
     Parser(List<Token> tokens){
         this.tokens = tokens;
     }
+
+    Expr parse(){
+        try{
+            return expression();
+        }catch(ParseError error){
+            return null;
+        }
+    }
+
+
 
     private Expr expression()
     {
@@ -126,9 +135,9 @@ public class Parser {
         //*  BANG = '!' || MINUS = '-' 
         if(match(BANG,MINUS)){
             Token opToken = previous();
-            Expr left = unary();
+            // Expr left = unary();
             Expr right = unary();
-            return new Expr.Binary(left,opToken,right); 
+            return new Expr.Unary(opToken,right); 
         }
 
         return primary();
@@ -183,21 +192,6 @@ public class Parser {
         }
     }
 
-    Expr parse(){
-        try{
-            return expression();
-        }catch(ParseError error){
-            return null;
-        }
-    }
-
-    List<Statement> parse(){
-        List<Statement> statements = new ArrayList<>();
-        while(!isAtEnd()){
-            statements.add(statement());
-        }
-        return statements;
-    }
 
     private Statement printStatement(){
         Expr value = expression();
