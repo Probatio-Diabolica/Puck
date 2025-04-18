@@ -1,12 +1,8 @@
 package com.puck.ELF;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import com.puck.ELF.Expr.Statement;
 
@@ -21,34 +17,32 @@ class ELF{
     private static void run(String source)
     {
         List<Statement> statements = parseSourceFile(source, true);
-
-        Interpreter machine = new Interpreter();
-        
-        machine.interpret(statements, true);
+        FileInterpreter interpreter = new FileInterpreter();
+        interpreter.interpret(statements, true);
     }
 
-    public static void  runPrompt() throws IOException
-    {
-        InputStreamReader input = new InputStreamReader(System.in);
-        BufferedReader reader = new BufferedReader(input);
-        for(;;)
-        {
-            System.out.print(">");
-            String  line = reader.readLine();
-            if(line==null) break;
-            run(line);
-            hadError=false;
-        }
+    // public static void  runPrompt() throws IOException
+    // {
+    //     InputStreamReader input = new InputStreamReader(System.in);
+    //     BufferedReader reader = new BufferedReader(input);
+    //     for(;;)
+    //     {
+    //         System.out.print(">");
+    //         String  line = reader.readLine();
+    //         if(line==null) break;
+    //         run(line);
+    //         hadError=false;
+    //     }
 
-    }
+    // }
     
-    public static void runFile(String fileString) throws IOException
-    {
-        byte[] bytes = Files.readAllBytes(Paths.get(fileString));
-        run(new String(bytes,Charset.defaultCharset()));
-        if(hadError) System.exit(65); // 65 shall be the syntax error code
-        if(hadRuntimeError) System.exit(70); // 75 being the runTime code 
-    }
+    // public static void runFile(String fileString) throws IOException
+    // {
+    //     byte[] bytes = Files.readAllBytes(Paths.get(fileString));
+    //     run(new String(bytes,Charset.defaultCharset()));
+    //     if(hadError) System.exit(65); // 65 shall be the syntax error code
+    //     if(hadRuntimeError) System.exit(70); // 75 being the runTime code 
+    // }
 
     static void error(int line,String  message)
     {
