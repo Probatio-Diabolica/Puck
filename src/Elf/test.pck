@@ -1,8 +1,10 @@
 var age = 67;
 
 var isAdult = age >= 18;
+
 if (isAdult) { print "eligible for voting: true"; }
 else { print "eligible for voting: false"; }
+
 
 if (age < 16) { print "eligible for driving: false"; }
 else if (age < 18) { print "eligible for driving: learner's permit"; }

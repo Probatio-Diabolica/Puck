@@ -1,8 +1,11 @@
 package com.puck.ELF;
 
+import java.util.ArrayList;
 import java.util.List;
 import static com.puck.ELF.TokenType.*;
 import com.puck.ELF.Expr.*;
+// import com.puck.ELF.Expr.Statement;
+
 // This parser really has two jobs:
 // 1. Given a valid sequence of tokens, produce a corresponding syntax tree.
 // 2. Given an invalid sequence of tokens, detect any errors and tell the user about their mistakes.
@@ -13,7 +16,17 @@ public class Parser {
     private final List<Token> tokens;
     private int current = 0;
     
-
+    private Statement declaration() {
+        try {
+            if (match(FUNC)) return function("function");
+            if (match(VAR)) return varDeclaration();
+    
+            return statement();
+        } catch (ParseError error) {
+            synchronize();
+            return null;
+        }
+    }
     Parser(List<Token> tokens){
         this.tokens = tokens;
     }
@@ -25,8 +38,6 @@ public class Parser {
             return null;
         }
     }
-
-
 
     private Expr expression()
     {
@@ -140,9 +151,37 @@ public class Parser {
             return new Expr.Unary(opToken,right); 
         }
 
-        return primary();
+        return call();
+        // return primary();
     }
 
+    private Expr call() {
+        Expr expr = primary();
+        while(true){
+            if(match(LEFT_PAREN)){
+                expr = finishCall(expr);
+            }else{
+                break;
+            }
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        List<Expr> args = new ArrayList<>();
+        if(!check(RIGHT_PAREN)){
+            
+            do{
+                if(args.size()>=255) error(peek(),"Can't have more than 255 params");
+                args.add(expression());
+            }while(match(COMMA));
+        }
+
+        Token paren = consume(RIGHT_PAREN, "Missing ( after args");
+        return Expr.Call(callee,paren,args);
+    }
+
+    //R- values only
     private Expr primary(){
         if(match(FALSE)) return new Expr.Literal(false);
         if(match(TRUE))  return new Expr.Literal(true);
@@ -178,7 +217,7 @@ public class Parser {
             if(previous().type== SEMICOLON) return;
             switch(peek().type){
                 case CLASS:
-                case FUN:
+                case FUNC:
                 case VAR: 
                 case FOR:
                 case IF:

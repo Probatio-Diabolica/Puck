@@ -1,5 +1,6 @@
 package com.puck.ELF;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.puck.ELF.Expr.Expr;
@@ -14,7 +15,35 @@ import com.puck.ELF.Expr.Statement.Print;
 import com.puck.ELF.Expr.Statement.Var;
 
 public class FileInterpreter implements Expr.Visitor<Object>, Statement.Visitor<Void> {
-    private PuckEnv environment = new PuckEnv();
+    final PuckEnv globals = new PuckEnv(); //global scope
+    private PuckEnv environment = globals; //local scope
+
+    FileInterpreter(){
+        globals.define("clock", new CallableFunction() {
+            @Override
+            public int ParamLength() 
+            { 
+                return 0; 
+            }
+
+            @Override
+            public Object call(FileInterpreter interpreter, List<Object> args){
+                return (double)System.currentTimeMillis()/1000.0;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                return (double)System.currentTimeMillis() / 1000.0;
+            }
+            
+            @Override
+            public String toString() 
+            { 
+                return "<native fn>"; 
+            }
+            
+        });
+    }
 
     void interpret(List<Statement> statements, boolean print) {
         try {
@@ -49,7 +78,7 @@ public class FileInterpreter implements Expr.Visitor<Object>, Statement.Visitor<
         return null;
     }
 
-    private String stringify(Object object) {
+    private String ConvertToString(Object object) {
         if (object == null) return "nil";
 
         if (object instanceof Double) {
@@ -62,8 +91,6 @@ public class FileInterpreter implements Expr.Visitor<Object>, Statement.Visitor<
 
         return object.toString();
     }
-
-
 
 
     @Override
@@ -109,7 +136,7 @@ public class FileInterpreter implements Expr.Visitor<Object>, Statement.Visitor<
     }
 
     private void checkNumberOperands(Token operator,
-                                     Object left, Object right) {
+                                    Object left, Object right) {
         if (left instanceof Double && right instanceof Double) return;
 
         throw new RuntimeError(operator, "Operands must be numbers.");
@@ -150,9 +177,16 @@ public class FileInterpreter implements Expr.Visitor<Object>, Statement.Visitor<
     }
 
     @Override
+    public Void visitFunctionStmt(Statement.Function stmt) {
+        ElfFunction function = new ElfFunction(stmt);
+        environment.define(stmt.name.lexeme, function);
+        return null;
+    }
+
+    @Override
     public Void visitPrintStatement(Print printable) {
         Object value = evaluate(printable.expression);
-        System.out.println(stringify(value));
+        System.out.println(ConvertToString(value));
         return null;
     }
 
@@ -237,6 +271,37 @@ public class FileInterpreter implements Expr.Visitor<Object>, Statement.Visitor<
 
         // Unreachable.
         return null;
+    }
+
+        public Object visitCallExpr(Expr.Call expr) {
+        Object callee = evaluate(expr.callee);
+
+        List<Object> args = new ArrayList<>();
+        for(Expr argument : expr.arguments()){
+            args.add(evaluate(argument));
+        }
+
+        //in order to avoid cases like "do the addition function ()".
+        if(!(callee instanceof CallableFunction)){
+            throw new RuntimeError(expr.paren, "Attempted to call a non-callable value. " +
+        "Only functions and classes can be called like '()'. " +
+        "Got: " + ConvertToString(callee) + " instead.");
+        }
+
+        CallableFunction func = (CallableFunction)callee;
+        
+        if(args.size() != func.ParamLength()){
+            throw new RuntimeError(expr.paren, String.format(
+                "Function '%s' expected %d argument%s but got %d.",
+                func, 
+                func.ParamLength(), 
+                func.ParamLength() == 1 ? "" : "s", 
+                args.size()
+            )
+            );
+        }
+        
+        return func.call(this,args);
     }
 }
 

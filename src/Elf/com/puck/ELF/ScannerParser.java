@@ -18,7 +18,7 @@ class ScannerParser {
         keywords.put("else"     , TokenType.ELSE );
         keywords.put("false"    , TokenType.FALSE );
         keywords.put("for"      , TokenType.FOR );
-        keywords.put("fun"      , TokenType.FUN );
+        keywords.put("fun"      , TokenType.FUNC );
         keywords.put("if"       , TokenType.IF );
         keywords.put("nil"      , TokenType.NIL );
         keywords.put("or"       , TokenType.OR );

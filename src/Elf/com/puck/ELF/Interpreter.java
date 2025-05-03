@@ -7,7 +7,9 @@ import com.puck.ELF.Expr.Statement.Expression;
 import com.puck.ELF.Expr.Statement.Loop;
 import com.puck.ELF.Expr.Statement.Print;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import com.puck.ELF.Expr.Expr;
 import com.puck.ELF.Expr.Expr.Assign;
@@ -19,8 +21,8 @@ import com.puck.ELF.Expr.Expr.Unary;
 import com.puck.ELF.Expr.Expr.Variable;
 
 public class Interpreter implements Expr.Visitor<Object>,Statement.Visitor<Object>{
-    private PuckEnv env = new PuckEnv();
-
+    final PuckEnv globals = new PuckEnv(); //global scope
+    private PuckEnv env = globals; //local scope
 
     public void interpret(Expr expression){
         try{
@@ -30,6 +32,33 @@ public class Interpreter implements Expr.Visitor<Object>,Statement.Visitor<Objec
         {
             ELF.runtimeError(error);
         }
+    }
+
+    Interpreter(){
+        globals.define("clock", new CallableFunction() {
+            @Override
+            public int ParamLength() 
+            { 
+                return 0; 
+            }
+
+            @Override
+            public Object call(FileInterpreter interpreter, List<Object> args){
+                return (double)System.currentTimeMillis()/1000.0;
+            }
+
+            @Override
+            public Object call(Interpreter interpreter, List<Object> arguments) {
+                return (double)System.currentTimeMillis() / 1000.0;
+            }
+            
+            @Override
+            public String toString() 
+            { 
+                return "<native fn>"; 
+            }
+            
+        });
     }
     
     public void interpret(List<Statement> statements, boolean print)
@@ -154,7 +183,7 @@ public class Interpreter implements Expr.Visitor<Object>,Statement.Visitor<Objec
         Object right = evaluate(expr.right);
         switch(expr.operator.type){
             case BANG:
-                return !isTruthy(right); //This is peak naming, Don't laugh
+                return !isTruthy(right); ////This is peak naming, Don't laugh :(
             case MINUS:
                 return -(double)right;
         }        
@@ -233,4 +262,33 @@ public class Interpreter implements Expr.Visitor<Object>,Statement.Visitor<Objec
         return null;
     }
 
+
+    public Object visitCallExpr(Expr.Call expr) {
+        Object callee = evaluate(expr.callee);
+
+        List<Object> args = new ArrayList<>();
+        for(Expr argument : expr.arguments()){
+            args.add(evaluate(argument));
+        }
+
+        //in order to avoid cases like "do the addition function ();".
+        if(!(callee instanceof CallableFunction)){
+            throw new RuntimeError(expr.paren, "Attempted to call a non-callable value. " +
+        "Only functions and classes can be called like '()'. " +
+        "Got: " + ConvertToString(callee) + " instead.");
+        }
+
+        CallableFunction func = (CallableFunction)callee;
+        if(args.size() != func.ParamLength()){
+            throw new RuntimeError(expr.paren, String.format(
+                "Function '%s' expected %d argument%s but got %d.",
+                func, 
+                func.ParamLength(), 
+                func.ParamLength() == 1 ? "" : "s", 
+                args.size()
+            )
+            );
+        }
+        return func.call(this,args);
+    }
 }

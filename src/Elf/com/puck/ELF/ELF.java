@@ -1,10 +1,16 @@
 package com.puck.ELF;
 
+import com.puck.ELF.Expr.Statement;
+import com.puck.ELF.Expr.Statement.Block;
+import com.puck.ELF.Expr.Statement.Expression;
+import com.puck.ELF.Expr.Statement.Loop;
+import com.puck.ELF.Expr.Statement.Print;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import com.puck.ELF.Expr.Statement;
+
 
 class ELF{
     static List<Token> tokens = new java.util.ArrayList<>(List.of());

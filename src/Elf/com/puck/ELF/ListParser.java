@@ -7,6 +7,9 @@ import java.util.List;
 import com.puck.ELF.Expr.Expr;
 import com.puck.ELF.Expr.Statement;
 
+import static com.puck.ELF.TokenType.*;
+import com.puck.ELF.Expr.*;
+
 
 public class ListParser {
     private static class ParseError extends RuntimeException {}
@@ -31,6 +34,33 @@ public class ListParser {
     //Each method here is a rule in the grammar
     private Expr expression() {
         return assignment();
+    }
+
+
+    private Statement.Function function(String kind)
+    {
+        Token name = consume(IDENTIFIER, "Expect "+ kind + " name.");
+        consume(LEFT_PAREN,"Expect '(' after" + kind + "name.");
+        List<Token> params = new ArrayList<>();
+        
+        //!! PARSING PARAMETERS
+        if(!check(RIGHT_PAREN)){
+            do{
+                if(params.size() >=255){
+                    error(peek(), "PARAM LIMIT EXCEEDED");
+                }
+                params.add(
+                consume(IDENTIFIER,"EXPECT PARAM NAME")
+                );
+            }while(match(COMMA));
+        }
+        consume(RIGHT_PAREN,"EXPECT ')' after parameters" );
+        
+        //PARSING the body
+        consume(LEFT_BRACE,"Expect '{' before " + kind + " body.");
+        List<Statement> body = block();
+        return new Statement.Function(name,params,body);
+
     }
 
     private Expr assignment() {
@@ -79,7 +109,7 @@ public class ListParser {
     private Statement declaration() {
         try {
             if (match(TokenType.VAR)) return varDeclaration();
-
+            if(match(TokenType.FUNC)) return function("function");
             return statement();
         } catch (ParseError error) {
             synchronize();
@@ -103,6 +133,7 @@ public class ListParser {
         if (match(TokenType.FOR)) return forStatement();
         if (match(TokenType.IF)) return ifStatement();
         if (match(TokenType.PRINT)) return printStatement();
+        if (match(TokenType.RETURN)) return returnStatement();  
         if (match(TokenType.WHILE)) return whileStatement();
         if (match(TokenType.LEFT_BRACE)) return new Statement.Block(block());
         return expressionStatement();
@@ -195,6 +226,18 @@ public class ListParser {
         return new Statement.Print(value);
     }
 
+    private Statement returnStatement() {
+        Token keyword = previous();
+        Expr value = null;
+        if (!check(SEMICOLON)) {
+        value = expression();
+        }
+        consume(SEMICOLON, "Expect ';' after return value.");
+        return new Statement.Return(keyword, value);
+    }
+
+
+
     // equality -> comparison ( ( "!=" | "==" ) comparison )*
     private Expr equality() {
         Expr expr = comparison();
@@ -252,7 +295,33 @@ public class ListParser {
             return new Expr.Unary(operator, right);
         }
 
-        return primary();
+        return call();
+    }
+
+    private Expr call() {
+        Expr expr = primary();
+        while(true){
+            if(match(LEFT_PAREN)){
+                expr = finishCall(expr);
+            }else{
+                break;
+            }
+        }
+        return expr;
+    }
+
+    private Expr finishCall(Expr callee) {
+        List<Expr> args = new ArrayList<>();
+        if(!check(RIGHT_PAREN)){
+            
+            do{
+                if(args.size()>=255) error(peek(),"Can't have more than 255 params");
+                args.add(expression());
+            }while(match(COMMA));
+        }
+
+        Token paren = consume(RIGHT_PAREN, "Missing ( after args");
+        return Expr.Call(callee,paren,args);
     }
 
     private Expr primary() {
@@ -300,7 +369,7 @@ public class ListParser {
 
             switch (peek().type) {
                 case CLASS:
-                case FUN:
+                case FUNC:
                 case VAR:
                 case FOR:
                 case IF:
